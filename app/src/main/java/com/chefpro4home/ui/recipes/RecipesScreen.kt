@@ -1,0 +1,340 @@
+package com.chefpro4home.ui.recipes
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.chefpro4home.data.model.Recipe
+import com.chefpro4home.ui.components.LoadingIndicator
+import com.chefpro4home.ui.theme.ChefPro4HomeTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecipesScreen(
+    navController: NavController? = null,
+    viewModel: RecipesViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val recipes by viewModel.recipes.collectAsState()
+    val searchText by viewModel.searchText.collectAsState()
+    val selectedCuisine by viewModel.selectedCuisine.collectAsState()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Header with logo, title, and settings
+        RecipeHeader(
+            onSettingsClick = { /* Navigate to settings */ },
+            onRefreshClick = { viewModel.refreshRecipes() }
+        )
+        
+        // Search bar
+        SearchBar(
+            text = searchText,
+            onTextChange = viewModel::updateSearchText
+        )
+        
+        // Cuisine filter chips
+        CuisineFilterChips(
+            selectedCuisine = selectedCuisine,
+            onCuisineSelected = viewModel::updateSelectedCuisine
+        )
+        
+        // Recipe grid
+        if (uiState.isLoading) {
+            LoadingIndicator()
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 300.dp),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(recipes) { recipe ->
+                    RecipeCard(
+                        recipe = recipe,
+                        onClick = { 
+                            navController?.navigate("recipe_detail/${recipe.id}")
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Show error message if any
+    uiState.errorMessage?.let { errorMessage ->
+        LaunchedEffect(errorMessage) {
+            // Show snackbar or error dialog
+            viewModel.clearError()
+        }
+    }
+}
+
+@Composable
+fun RecipeHeader(
+    onSettingsClick: () -> Unit,
+    onRefreshClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Logo placeholder
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Logo",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Title
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Recipes",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Discover & Cook",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Action buttons
+        Row {
+            // Refresh button
+            IconButton(onClick = onRefreshClick) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            
+            // Settings button
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchBar(
+    text: String,
+    onTextChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = text,
+        onValueChange = onTextChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Search recipes...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = "Search"
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+@Composable
+fun CuisineFilterChips(
+    selectedCuisine: String?,
+    onCuisineSelected: (String?) -> Unit
+) {
+    val cuisines = listOf("All", "Italian", "Mexican", "Asian", "American", "Mediterranean")
+    
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(cuisines) { cuisine ->
+            FilterChip(
+                onClick = { onCuisineSelected(if (cuisine == selectedCuisine) null else cuisine) },
+                label = { Text(cuisine) },
+                selected = cuisine == selectedCuisine
+            )
+        }
+    }
+}
+
+@Composable
+fun RecipeCard(
+    recipe: Recipe,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column {
+            // Recipe image
+            AsyncImage(
+                model = recipe.imageURL,
+                contentDescription = recipe.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Recipe info
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = recipe.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = recipe.summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${recipe.servings} servings",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = "${recipe.cookTime} min cook",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Favorite button
+                    IconButton(
+                        onClick = { /* Toggle favorite */ },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.FavoriteBorder,
+                            contentDescription = "Add to favorites",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Shopping cart button
+                    IconButton(
+                        onClick = { /* Add to shopping list */ },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ShoppingCart,
+                            contentDescription = "Add to shopping list",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RecipeCardPreview() {
+    ChefPro4HomeTheme {
+        RecipeCard(
+            recipe = Recipe(
+                id = "1",
+                name = "Black Beans & Rice",
+                summary = "My Cuban mother's go-to recipe, black beans and rice is a simple, comforting dish full of flavor and tradition.",
+                imageURL = "",
+                servings = "6",
+                prepTime = "30",
+                cookTime = "45",
+                totalTime = "75",
+                createdAt = "",
+                updatedAt = ""
+            ),
+            onClick = {}
+        )
+    }
+}

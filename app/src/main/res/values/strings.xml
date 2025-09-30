@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chef Pro 4 Home</string>
+    
+    <!-- Navigation -->
+    <string name="nav_recipes">Recipes</string>
+    <string name="nav_shopping">Shopping</string>
+    <string name="nav_what2cook">What 2 Cook</string>
+    <string name="nav_inventory">Inventory</string>
+    
+    <!-- Recipes -->
+    <string name="recipes_title">Recipes</string>
+    <string name="recipes_subtitle">Discover &amp; Cook</string>
+    <string name="recipes_search_hint">Search recipes...</string>
+    <string name="recipes_filter_all">All</string>
+    <string name="recipes_servings">servings</string>
+    <string name="recipes_minutes">min</string>
+    
+    <!-- Shopping List -->
+    <string name="shopping_title">Shopping List</string>
+    <string name="shopping_filter_all">All</string>
+    <string name="shopping_filter_pending">Pending</string>
+    <string name="shopping_filter_completed">Completed</string>
+    <string name="shopping_empty_title">Your shopping list is empty</string>
+    <string name="shopping_empty_subtitle">Add items from recipes or manually add items to get started</string>
+    <string name="shopping_from_recipe">From recipe</string>
+    
+    <!-- What 2 Cook -->
+    <string name="what2cook_title">What 2 Cook</string>
+    <string name="what2cook_search_title">Search Recipes</string>
+    <string name="what2cook_search_hint">Enter ingredients (comma separated)</string>
+    <string name="what2cook_diet_label">Diet</string>
+    <string name="what2cook_max_time_label">Max Time (min)</string>
+    <string name="what2cook_max_servings_label">Max Servings</string>
+    <string name="what2cook_search_button">Search Recipes</string>
+    <string name="what2cook_quick_actions">Quick Actions</string>
+    <string name="what2cook_inventory_recipes">Inventory Recipes</string>
+    <string name="what2cook_inventory_subtitle">Use what you have</string>
+    <string name="what2cook_popular_recipes">Popular Recipes</string>
+    <string name="what2cook_popular_subtitle">Family favorites</string>
+    <string name="what2cook_quick_meals">Quick Meals</string>
+    <string name="what2cook_quick_meals_subtitle">30 min or less</string>
+    <string name="what2cook_random_recipes">Random Recipes</string>
+    <string name="what2cook_random_subtitle">Surprise me!</string>
+    <string name="what2cook_favorites">Favorites</string>
+    <string name="what2cook_favorites_subtitle">Your saved recipes</string>
+    <string name="what2cook_search_results">Search Results</string>
+    <string name="what2cook_minutes">minutes</string>
+    <string name="what2cook_servings">servings</string>
+    
+    <!-- Inventory -->
+    <string name="inventory_title">Inventory</string>
+    <string name="inventory_search_hint">Search inventory...</string>
+    <string name="inventory_empty_title">Your inventory is empty</string>
+    <string name="inventory_empty_subtitle">Add items manually or scan barcodes to track your pantry</string>
+    <string name="inventory_expires">Expires:</string>
+    
+    <!-- Common -->
+    <string name="loading">Loading...</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="error_network">Network error</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="add">Add</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="clear">Clear</string>
+    <string name="scan_barcode">Scan Barcode</string>
+    
+    <!-- Diet Types -->
+    <string name="diet_none">None</string>
+    <string name="diet_vegetarian">Vegetarian</string>
+    <string name="diet_vegan">Vegan</string>
+    <string name="diet_gluten_free">Gluten Free</string>
+    <string name="diet_dairy_free">Dairy Free</string>
+    <string name="diet_keto">Keto</string>
+    <string name="diet_paleo">Paleo</string>
+</resources>
