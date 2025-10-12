@@ -26,3 +26,5 @@ interface NutritionDao {
     @Query("DELETE FROM nutrition")
     suspend fun deleteAllNutrition()
 }
+
+

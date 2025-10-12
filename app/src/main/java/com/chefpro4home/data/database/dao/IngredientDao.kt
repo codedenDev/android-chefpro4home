@@ -30,3 +30,5 @@ interface IngredientDao {
     @Query("DELETE FROM ingredients")
     suspend fun deleteAllIngredients()
 }
+
+

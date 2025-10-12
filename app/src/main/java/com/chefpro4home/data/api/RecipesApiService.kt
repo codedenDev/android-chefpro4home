@@ -92,3 +92,5 @@ data class ImageUploadResponse(
     val filename: String,
     val image_url: String
 )
+
+

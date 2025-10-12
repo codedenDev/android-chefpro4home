@@ -187,6 +187,19 @@ class RecipesRepository @Inject constructor(
     
     suspend fun addShoppingItem(item: ShoppingItem) = shoppingListDao.insertItem(item)
     
+    suspend fun addToShoppingList(ingredientName: String) {
+        val shoppingItem = ShoppingItem(
+            id = java.util.UUID.randomUUID().toString(),
+            name = ingredientName,
+            amount = "1",
+            unit = "item",
+            isCompleted = false,
+            recipeId = null,
+            createdAt = System.currentTimeMillis().toString()
+        )
+        shoppingListDao.insertItem(shoppingItem)
+    }
+    
     suspend fun updateShoppingItem(item: ShoppingItem) = shoppingListDao.updateItem(item)
     
     suspend fun deleteShoppingItem(id: String) = shoppingListDao.deleteItemById(id)
@@ -198,8 +211,17 @@ class RecipesRepository @Inject constructor(
     suspend fun deleteCompletedShoppingItems() = shoppingListDao.deleteCompletedItems()
     
     suspend fun addRecipeToShoppingList(recipe: Recipe) {
+        println("📋 Fetching ingredients for recipe ID: ${recipe.id}")
         val ingredients = ingredientDao.getIngredientsByRecipeIdSync(recipe.id)
-        ingredients.forEach { ingredient ->
+        println("📋 Found ${ingredients.size} ingredients for recipe ${recipe.name}")
+        
+        if (ingredients.isEmpty()) {
+            println("⚠️ No ingredients found in database for recipe ${recipe.id}")
+            println("⚠️ This might mean ingredients weren't saved when the recipe was loaded")
+        }
+        
+        ingredients.forEachIndexed { index, ingredient ->
+            println("🥕 Adding ingredient ${index + 1}/${ingredients.size}: ${ingredient.name} (${ingredient.amount} ${ingredient.unit})")
             val shoppingItem = ShoppingItem(
                 id = "${recipe.id}_${ingredient.id}",
                 name = ingredient.name ?: "",
@@ -209,7 +231,10 @@ class RecipesRepository @Inject constructor(
                 createdAt = System.currentTimeMillis().toString()
             )
             shoppingListDao.insertItem(shoppingItem)
+            println("✅ Successfully added ${ingredient.name} to shopping list")
         }
+        
+        println("🎉 Finished adding ${ingredients.size} ingredients to shopping list")
     }
     
     // Inventory operations
@@ -309,3 +334,5 @@ private fun com.chefpro4home.data.api.RecipeApiModel.toEntity(): Recipe {
         updatedAt = updated_at ?: System.currentTimeMillis().toString()
     )
 }
+
+

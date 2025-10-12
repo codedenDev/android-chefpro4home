@@ -42,3 +42,5 @@ interface ShoppingListDao {
     @Query("UPDATE shopping_items SET isCompleted = :isCompleted WHERE id = :id")
     suspend fun updateItemCompletion(id: String, isCompleted: Boolean)
 }
+
+

@@ -117,6 +117,7 @@ fun What2CookScreen(
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun SearchSection(
     searchText: String,
@@ -490,3 +491,5 @@ fun QuickActionCardPreview() {
         )
     }
 }
+
+

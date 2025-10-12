@@ -39,3 +39,5 @@ interface InventoryDao {
     @Query("DELETE FROM inventory_items")
     suspend fun deleteAllItems()
 }
+
+

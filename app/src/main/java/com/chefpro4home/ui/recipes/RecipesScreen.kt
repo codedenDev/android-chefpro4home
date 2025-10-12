@@ -24,6 +24,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.Image
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +36,8 @@ import coil.compose.AsyncImage
 import com.chefpro4home.data.model.Recipe
 import com.chefpro4home.ui.components.LoadingIndicator
 import com.chefpro4home.ui.theme.ChefPro4HomeTheme
+import androidx.compose.ui.res.painterResource
+import com.chefpro4home.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +89,10 @@ fun RecipesScreen(
                         recipe = recipe,
                         onClick = { 
                             navController?.navigate("recipe_detail/${recipe.id}")
+                        },
+                        onAddToShoppingList = { selectedRecipe ->
+                            // Add recipe ingredients to shopping list
+                            viewModel.addRecipeToShoppingList(selectedRecipe)
                         }
                     )
                 }
@@ -111,20 +121,14 @@ fun RecipeHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Logo placeholder
-        Box(
+        // Chef Pro Logo
+        Image(
+            painter = painterResource(id = R.drawable.ic_chef_pro_brand),
+            contentDescription = "Chef Pro Logo",
             modifier = Modifier
-                .size(100.dp)
+                .size(80.dp, 40.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Logo",
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
+        )
         
         Spacer(modifier = Modifier.weight(1f))
         
@@ -217,7 +221,8 @@ fun CuisineFilterChips(
 @Composable
 fun RecipeCard(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToShoppingList: (Recipe) -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -301,7 +306,7 @@ fun RecipeCard(
                     
                     // Shopping cart button
                     IconButton(
-                        onClick = { /* Add to shopping list */ },
+                        onClick = { onAddToShoppingList(recipe) },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
@@ -338,3 +343,4 @@ fun RecipeCardPreview() {
         )
     }
 }
+

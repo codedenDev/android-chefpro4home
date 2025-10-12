@@ -154,3 +154,5 @@ data class ShoppingListUiState(
     val errorMessage: String? = null,
     val isRefreshing: Boolean = false
 )
+
+

@@ -148,3 +148,5 @@ data class Event(
     val isExpandedVersion: Boolean = false,
     val createdAt: String
 ) : Parcelable
+
+

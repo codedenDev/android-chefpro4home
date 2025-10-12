@@ -2,10 +2,11 @@ package com.chefpro4home.ui.components
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -64,7 +65,7 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
         BottomNavItem("recipes", "Recipes", Icons.Filled.Home),
         BottomNavItem("shopping", "Shopping", Icons.Filled.ShoppingCart),
         BottomNavItem("what2cook", "What 2 Cook", Icons.Filled.Restaurant),
-        BottomNavItem("inventory", "Inventory", Icons.Filled.List)
+        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -109,3 +110,5 @@ fun MainScreenPreview() {
         MainScreen()
     }
 }
+
+

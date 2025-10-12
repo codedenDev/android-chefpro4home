@@ -206,3 +206,5 @@ data class InventoryUiState(
     val scannedItem: InventoryItem? = null,
     val showBarcodeResult: Boolean = false
 )
+
+

@@ -149,10 +149,33 @@ class RecipesViewModel @Inject constructor(
         return listOf("All", "Cuban", "German", "Tex-Mex", "Italian", "Mexican", "American")
     }
     
+    fun addRecipeToShoppingList(recipe: Recipe) {
+        viewModelScope.launch {
+            try {
+                println("🛒 Adding recipe ${recipe.name} (ID: ${recipe.id}) to shopping list...")
+                // Use the existing repository method that handles ingredients properly
+                repository.addRecipeToShoppingList(recipe)
+                println("✅ Successfully added recipe ${recipe.name} to shopping list")
+                _uiState.value = _uiState.value.copy(
+                    successMessage = "Added ${recipe.name} to shopping list"
+                )
+            } catch (e: Exception) {
+                println("❌ Error adding recipe to shopping list: ${e.message}")
+                e.printStackTrace()
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to add recipe to shopping list: ${e.message}"
+                )
+            }
+        }
+    }
+    
 }
 
 data class RecipesUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
     val isRefreshing: Boolean = false
 )
+
+

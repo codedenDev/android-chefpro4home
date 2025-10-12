@@ -27,3 +27,5 @@ interface EquipmentDao {
     @Query("DELETE FROM equipment")
     suspend fun deleteAllEquipment()
 }
+
+

@@ -3,3 +3,5 @@
     <!-- Exclude specific files or directories from backup -->
     <exclude domain="sharedpref" path="device_prefs.xml"/>
 </full-backup-content>
+
+

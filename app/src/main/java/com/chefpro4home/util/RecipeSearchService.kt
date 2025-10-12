@@ -92,6 +92,7 @@ class RecipeSearchService @Inject constructor(
     }
 
     // Search local recipes (equivalent to iOS searchLocalRecipes)
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun searchLocalRecipes(
         ingredients: List<String>,
         diet: DietType,
@@ -103,6 +104,7 @@ class RecipeSearchService @Inject constructor(
     }
 
     // Search Spoonacular recipes (equivalent to iOS searchSpoonacularRecipes)
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun searchSpoonacularRecipes(
         ingredients: List<String>,
         diet: DietType,
@@ -114,6 +116,7 @@ class RecipeSearchService @Inject constructor(
     }
 
     // Search Edamam recipes (equivalent to iOS searchEdamamRecipes)
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun searchEdamamRecipes(
         ingredients: List<String>,
         diet: DietType,
@@ -135,11 +138,13 @@ class RecipeSearchService @Inject constructor(
         emit(emptyList())
     }
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun getQuickMeals(maxTime: Int = 30): Flow<List<RecipeSearchResult>> = flow {
         // Get quick meal recipes
         emit(emptyList())
     }
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun getRandomRecipes(count: Int = 5): Flow<List<RecipeSearchResult>> = flow {
         // Get random recipes
         emit(emptyList())
@@ -167,3 +172,5 @@ class RecipeSearchService @Inject constructor(
         )
     }
 }
+
+
