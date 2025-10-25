@@ -147,6 +147,31 @@ class ShoppingListViewModel @Inject constructor(
         // This would implement logic to group common ingredients
         return _shoppingItems.value.filter { it.recipeId == null }
     }
+    
+    // Move shopping item to inventory - matches iOS functionality
+    fun moveToInventory(inventoryItem: com.chefpro4home.data.model.InventoryItem) {
+        viewModelScope.launch {
+            try {
+                // Add to inventory
+                repository.addInventoryItem(inventoryItem)
+                
+                // Find and remove the corresponding shopping item
+                // Match by name to find the original shopping item
+                val shoppingItemToRemove = _shoppingItems.value.find { 
+                    it.name.equals(inventoryItem.name, ignoreCase = true) 
+                }
+                
+                shoppingItemToRemove?.let { item ->
+                    repository.deleteShoppingItem(item.id)
+                    println("✅ Moved ${inventoryItem.name} from shopping list to inventory")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = e.message ?: "Failed to move item to inventory"
+                )
+            }
+        }
+    }
 }
 
 data class ShoppingListUiState(

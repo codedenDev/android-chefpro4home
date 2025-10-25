@@ -23,8 +23,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chefpro4home.data.model.ShoppingItem
+import com.chefpro4home.data.model.InventoryItem
 import com.chefpro4home.ui.components.LoadingIndicator
 import com.chefpro4home.ui.theme.ChefPro4HomeTheme
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +36,8 @@ fun ShoppingListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val shoppingItems by viewModel.shoppingItems.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
+    var showMoveToInventoryDialog by remember { mutableStateOf(false) }
+    var selectedItemToMove by remember { mutableStateOf<ShoppingItem?>(null) }
 
     Column(
         modifier = Modifier
@@ -64,10 +68,30 @@ fun ShoppingListScreen(
                     },
                     onDelete = { id ->
                         viewModel.deleteShoppingItem(id)
+                    },
+                    onMoveToInventory = { item ->
+                        selectedItemToMove = item
+                        showMoveToInventoryDialog = true
                     }
                 )
             }
         }
+    }
+    
+    // Move to Inventory Dialog - matches iOS QuickAddToInventoryView
+    if (showMoveToInventoryDialog && selectedItemToMove != null) {
+        QuickAddToInventoryDialog(
+            shoppingItem = selectedItemToMove!!,
+            onDismiss = {
+                showMoveToInventoryDialog = false
+                selectedItemToMove = null
+            },
+            onConfirm = { inventoryItem ->
+                viewModel.moveToInventory(inventoryItem)
+                showMoveToInventoryDialog = false
+                selectedItemToMove = null
+            }
+        )
     }
     
     // Show error message if any
@@ -152,7 +176,8 @@ fun ShoppingListHeader(
 fun ShoppingItemsList(
     items: List<ShoppingItem>,
     onToggleComplete: (String, Boolean) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    onMoveToInventory: (ShoppingItem) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -165,7 +190,8 @@ fun ShoppingItemsList(
                 onToggleComplete = { isCompleted ->
                     onToggleComplete(item.id, isCompleted)
                 },
-                onDelete = { onDelete(item.id) }
+                onDelete = { onDelete(item.id) },
+                onMoveToInventory = { onMoveToInventory(item) }
             )
         }
     }
@@ -175,7 +201,8 @@ fun ShoppingItemsList(
 fun ShoppingItemRow(
     item: ShoppingItem,
     onToggleComplete: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMoveToInventory: (ShoppingItem) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -225,6 +252,37 @@ fun ShoppingItemRow(
                 }
             }
             
+            // Action buttons (iOS: Move to Inventory + Delete)
+            if (!item.isCompleted) {
+                // Move to Inventory button - matches iOS
+                Button(
+                    onClick = { onMoveToInventory(item) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Move to Inventory",
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Move",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            
             // Delete button
             IconButton(onClick = onDelete) {
                 Icon(
@@ -262,6 +320,179 @@ fun EmptyShoppingListContent() {
     }
 }
 
+// QuickAddToInventoryDialog - matches iOS QuickAddToInventoryView
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickAddToInventoryDialog(
+    shoppingItem: ShoppingItem,
+    onDismiss: () -> Unit,
+    onConfirm: (com.chefpro4home.data.model.InventoryItem) -> Unit
+) {
+    var itemName by remember { mutableStateOf(shoppingItem.name) }
+    var quantity by remember { mutableStateOf(shoppingItem.amount ?: "1") }
+    var unit by remember { mutableStateOf(shoppingItem.unit ?: "piece") }
+    var category by remember { mutableStateOf(determineCategory(shoppingItem.name)) }
+    var notes by remember { mutableStateOf("") }
+    
+    val units = listOf("piece", "pound", "ounce", "gram", "kilogram", "cup", "tablespoon", "teaspoon", 
+                      "liter", "milliliter", "gallon", "quart", "pint", "bunch", "head", "can", 
+                      "package", "bag", "box", "jar", "bottle")
+    val categories = listOf("Refrigerator", "Freezer", "Pantry", "Spices", "Beverages", "Other")
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to Inventory") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Item Name
+                OutlinedTextField(
+                    value = itemName,
+                    onValueChange = { itemName = it },
+                    label = { Text("Item Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                // Quantity
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    label = { Text("Quantity") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                // Unit Dropdown
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = unit,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Unit") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        units.forEach { unitOption ->
+                            DropdownMenuItem(
+                                text = { Text(unitOption.replaceFirstChar { it.uppercase() }) },
+                                onClick = {
+                                    unit = unitOption
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Category Dropdown
+                var categoryExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = categoryExpanded,
+                    onExpandedChange = { categoryExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoryExpanded,
+                        onDismissRequest = { categoryExpanded = false }
+                    ) {
+                        categories.forEach { categoryOption ->
+                            DropdownMenuItem(
+                                text = { Text(categoryOption) },
+                                onClick = {
+                                    category = categoryOption
+                                    categoryExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Notes (Optional)
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val inventoryItem = com.chefpro4home.data.model.InventoryItem(
+                        id = java.util.UUID.randomUUID().toString(),
+                        name = itemName,
+                        amount = quantity,
+                        unit = unit,
+                        category = category,
+                        expirationDate = null,
+                        barcode = null,
+                        createdAt = System.currentTimeMillis().toString()
+                    )
+                    onConfirm(inventoryItem)
+                },
+                enabled = itemName.isNotBlank() && quantity.isNotBlank()
+            ) {
+                Text("Add to Inventory")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+// Helper function to determine category from item name (matches iOS smart defaults)
+private fun determineCategory(itemName: String): String {
+    val lowercaseName = itemName.lowercase()
+    return when {
+        lowercaseName.contains("milk") || lowercaseName.contains("cheese") || 
+        lowercaseName.contains("yogurt") || lowercaseName.contains("butter") || 
+        lowercaseName.contains("cream") || lowercaseName.contains("egg") -> "Refrigerator"
+        
+        lowercaseName.contains("bread") || lowercaseName.contains("pasta") || 
+        lowercaseName.contains("rice") || lowercaseName.contains("flour") || 
+        lowercaseName.contains("sugar") || lowercaseName.contains("bean") -> "Pantry"
+        
+        lowercaseName.contains("meat") || lowercaseName.contains("fish") || 
+        lowercaseName.contains("chicken") || lowercaseName.contains("frozen") -> "Freezer"
+        
+        lowercaseName.contains("pepper") || lowercaseName.contains("cumin") || 
+        lowercaseName.contains("oregano") || lowercaseName.contains("spice") -> "Spices"
+        
+        lowercaseName.contains("juice") || lowercaseName.contains("soda") || 
+        lowercaseName.contains("water") || lowercaseName.contains("beer") || 
+        lowercaseName.contains("wine") -> "Beverages"
+        
+        else -> "Pantry" // Default
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun ShoppingItemRowPreview() {
@@ -277,7 +508,8 @@ fun ShoppingItemRowPreview() {
                 createdAt = ""
             ),
             onToggleComplete = {},
-            onDelete = {}
+            onDelete = {},
+            onMoveToInventory = {}
         )
     }
 }

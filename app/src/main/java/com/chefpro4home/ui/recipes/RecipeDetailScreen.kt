@@ -24,7 +24,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.chefpro4home.data.model.Ingredient
+import com.chefpro4home.data.model.Instruction
+import com.chefpro4home.data.model.Nutrition
 import com.chefpro4home.data.model.Recipe
+import com.chefpro4home.data.model.Tag
 import com.chefpro4home.ui.theme.ChefPro4HomeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,22 +36,30 @@ import com.chefpro4home.ui.theme.ChefPro4HomeTheme
 fun RecipeDetailScreen(
     recipeId: String,
     onNavigateBack: () -> Unit,
-    viewModel: RecipesViewModel = hiltViewModel()
+    viewModel: RecipeDetailViewModel = hiltViewModel()
 ) {
-    val recipes by viewModel.recipes.collectAsState()
-    val recipe = recipes.find { it.id == recipeId }
+    val recipe by viewModel.recipe.collectAsState()
+    val ingredients by viewModel.ingredients.collectAsState()
+    val instructions by viewModel.instructions.collectAsState()
+    val nutrition by viewModel.nutrition.collectAsState()
+    val tags by viewModel.tags.collectAsState()
+    val isFavorite by viewModel.isFavorite.collectAsState()
+    
+    LaunchedEffect(recipeId) {
+        viewModel.loadRecipe(recipeId)
+    }
     
     if (recipe == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Recipe not found")
+            CircularProgressIndicator()
         }
         return
     }
     
-    var isFavorite by remember { mutableStateOf(false) }
+    val currentRecipe = recipe!!
     
     Column(
         modifier = Modifier
@@ -56,7 +68,7 @@ fun RecipeDetailScreen(
     ) {
         // Top App Bar
         TopAppBar(
-            title = { Text(recipe.name) },
+            title = { Text(currentRecipe.name) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
@@ -66,14 +78,14 @@ fun RecipeDetailScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { isFavorite = !isFavorite }) {
+                IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
                         tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(onClick = { /* Share recipe */ }) {
+                IconButton(onClick = { viewModel.shareRecipe() }) {
                     Icon(
                         imageVector = Icons.Filled.Share,
                         contentDescription = "Share recipe"
@@ -90,8 +102,8 @@ fun RecipeDetailScreen(
             // Recipe Image
             item {
                 AsyncImage(
-                    model = recipe.imageURL,
-                    contentDescription = recipe.name,
+                    model = currentRecipe.imageURL,
+                    contentDescription = currentRecipe.name,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(250.dp)
@@ -106,7 +118,7 @@ fun RecipeDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = recipe.name,
+                        text = currentRecipe.name,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -114,9 +126,9 @@ fun RecipeDetailScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    if (recipe.summary.isNotEmpty()) {
+                    if (currentRecipe.summary.isNotEmpty()) {
                         Text(
-                            text = recipe.summary,
+                            text = currentRecipe.summary,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -141,19 +153,19 @@ fun RecipeDetailScreen(
                     ) {
                         RecipeStatItem(
                             label = "Servings",
-                            value = recipe.servings
+                            value = currentRecipe.servings
                         )
                         RecipeStatItem(
                             label = "Prep Time",
-                            value = "${recipe.prepTime} min"
+                            value = "${currentRecipe.prepTime} min"
                         )
                         RecipeStatItem(
                             label = "Cook Time",
-                            value = "${recipe.cookTime} min"
+                            value = "${currentRecipe.cookTime} min"
                         )
                         RecipeStatItem(
                             label = "Total Time",
-                            value = "${recipe.totalTime} min"
+                            value = "${currentRecipe.totalTime} min"
                         )
                     }
                 }
@@ -161,153 +173,195 @@ fun RecipeDetailScreen(
             
             // Ingredients Section
             item {
-                Text(
-                    text = "Ingredients",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Placeholder ingredients - in a real app, these would come from the database
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "• 2 cups black beans",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "• 1 cup white rice",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "• 1 onion, diced",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "• 2 cloves garlic, minced",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "• 1 bay leaf",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "• Salt and pepper to taste",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Ingredients",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (ingredients.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "No ingredients available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    } else {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ingredients.forEach { ingredient ->
+                                    val ingredientText = buildString {
+                                        append("• ")
+                                        if (!ingredient.amount.isNullOrEmpty()) {
+                                            append("${ingredient.amount} ")
+                                        }
+                                        if (!ingredient.unit.isNullOrEmpty()) {
+                                            append("${ingredient.unit} ")
+                                        }
+                                        append(ingredient.name ?: "Unknown ingredient")
+                                        if (!ingredient.notes.isNullOrEmpty()) {
+                                            append(" (${ingredient.notes})")
+                                        }
+                                    }
+                                    Text(
+                                        text = ingredientText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
             
             // Instructions Section
             item {
-                Text(
-                    text = "Instructions",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Placeholder instructions - in a real app, these would come from the database
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        InstructionStep(
-                            stepNumber = 1,
-                            instruction = "Rinse the black beans and soak them overnight, or use canned beans for convenience."
-                        )
-                        InstructionStep(
-                            stepNumber = 2,
-                            instruction = "In a large pot, heat oil over medium heat. Add diced onion and cook until translucent."
-                        )
-                        InstructionStep(
-                            stepNumber = 3,
-                            instruction = "Add minced garlic and cook for 1 minute until fragrant."
-                        )
-                        InstructionStep(
-                            stepNumber = 4,
-                            instruction = "Add the black beans, bay leaf, and enough water to cover. Bring to a boil, then reduce heat and simmer for 45 minutes."
-                        )
-                        InstructionStep(
-                            stepNumber = 5,
-                            instruction = "Meanwhile, cook the rice according to package instructions."
-                        )
-                        InstructionStep(
-                            stepNumber = 6,
-                            instruction = "Season the beans with salt and pepper to taste. Serve the beans over the rice."
-                        )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Instructions",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (instructions.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "No instructions available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    } else {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                instructions.filter { it.type == "instruction" }.forEachIndexed { index, instruction ->
+                                    InstructionStep(
+                                        stepNumber = index + 1,
+                                        instruction = instruction.text ?: ""
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
             
             // Nutrition Section
-            item {
-                Text(
-                    text = "Nutrition Information",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            NutritionItem(
-                                label = "Calories",
-                                value = "472",
-                                unit = "kcal"
-                            )
-                        }
-                        item {
-                            NutritionItem(
-                                label = "Protein",
-                                value = "7",
-                                unit = "g"
-                            )
-                        }
-                        item {
-                            NutritionItem(
-                                label = "Carbs",
-                                value = "24",
-                                unit = "g"
-                            )
-                        }
-                        item {
-                            NutritionItem(
-                                label = "Fat",
-                                value = "40",
-                                unit = "g"
-                            )
-                        }
-                        item {
-                            NutritionItem(
-                                label = "Fiber",
-                                value = "8",
-                                unit = "g"
-                            )
+            nutrition?.let { nutritionData ->
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Nutrition Information",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                nutritionData.calories?.let { calories ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Calories",
+                                            value = calories.toInt().toString(),
+                                            unit = "kcal"
+                                        )
+                                    }
+                                }
+                                nutritionData.protein?.let { protein ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Protein",
+                                            value = protein.toInt().toString(),
+                                            unit = "g"
+                                        )
+                                    }
+                                }
+                                nutritionData.carbohydrates?.let { carbs ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Carbs",
+                                            value = carbs.toInt().toString(),
+                                            unit = "g"
+                                        )
+                                    }
+                                }
+                                nutritionData.fat?.let { fat ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Fat",
+                                            value = fat.toInt().toString(),
+                                            unit = "g"
+                                        )
+                                    }
+                                }
+                                nutritionData.fiber?.let { fiber ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Fiber",
+                                            value = fiber.toInt().toString(),
+                                            unit = "g"
+                                        )
+                                    }
+                                }
+                                nutritionData.sugar?.let { sugar ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Sugar",
+                                            value = sugar.toInt().toString(),
+                                            unit = "g"
+                                        )
+                                    }
+                                }
+                                nutritionData.sodium?.let { sodium ->
+                                    item {
+                                        NutritionItem(
+                                            label = "Sodium",
+                                            value = sodium.toInt().toString(),
+                                            unit = "mg"
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

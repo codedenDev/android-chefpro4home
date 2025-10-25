@@ -1,8 +1,9 @@
 package com.chefpro4home.ui.what2cook
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.chefpro4home.data.model.Recipe
+import com.chefpro4home.data.manager.FavoritesManager
 import com.chefpro4home.data.repository.RecipesRepository
 import com.chefpro4home.util.RecipeSearchService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,8 +15,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class What2CookViewModel @Inject constructor(
-    private val repository: RecipesRepository
+    private val repository: RecipesRepository,
+    private val favoritesManager: FavoritesManager
 ) : ViewModel() {
+    
+    companion object {
+        private const val TAG = "What2CookViewModel"
+    }
 
     private val _uiState = MutableStateFlow(What2CookUiState())
     val uiState: StateFlow<What2CookUiState> = _uiState.asStateFlow()
@@ -67,22 +73,32 @@ class What2CookViewModel @Inject constructor(
         _useInventoryIngredients.value = use
     }
 
+    // Main search function - matches iOS performSearch()
     fun searchRecipes() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             
             try {
-                val ingredients = _searchText.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                
-                repository.searchRecipesWithIngredients(
-                    ingredients = ingredients,
-                    diet = _selectedDiet.value,
-                    maxTime = _maxTime.value
-                ).collect { results ->
-                    _searchResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
+                Log.d(TAG, "Starting recipe search...")
+                val results = if (_searchText.value.isNotEmpty()) {
+                    // Text-based search
+                    Log.d(TAG, "Searching by text: ${_searchText.value}")
+                    repository.searchRecipesWithIngredients(
+                        ingredients = _searchText.value.split(",", " ").map { it.trim() }.filter { it.isNotEmpty() },
+                        diet = _selectedDiet.value,
+                        maxTime = _maxTime.value
+                    )
+                } else {
+                    // Popular recipes fallback
+                    Log.d(TAG, "Searching popular recipes")
+                    repository.getPopularRecipes()
                 }
+                
+                _searchResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                Log.d(TAG, "Search completed: ${results.size} results")
             } catch (e: Exception) {
+                Log.e(TAG, "Search failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to search recipes"
@@ -91,18 +107,19 @@ class What2CookViewModel @Inject constructor(
         }
     }
 
-    fun getInventoryRecipes() {
+    // Quick Action: Inventory Recipes
+    fun getInventoryRecipes(inventoryCount: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             _quickActionTitle.value = "Recipes with Your Ingredients"
-            _quickActionSubtitle.value = "Based on your inventory"
+            _quickActionSubtitle.value = "Based on $inventoryCount items in your inventory"
             
             try {
-                repository.getInventoryRecipes().collect { results ->
-                    _quickActionResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                val results = repository.getInventoryRecipes()
+                _quickActionResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
+                Log.e(TAG, "Inventory recipes failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load inventory recipes"
@@ -111,18 +128,19 @@ class What2CookViewModel @Inject constructor(
         }
     }
 
+    // Quick Action: Popular Recipes
     fun getPopularRecipes() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             _quickActionTitle.value = "Popular Recipes"
-            _quickActionSubtitle.value = "Trending family favorites"
+            _quickActionSubtitle.value = "Trending and favorite dishes"
             
             try {
-                repository.getPopularRecipes().collect { results ->
-                    _quickActionResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                val results = repository.getPopularRecipes()
+                _quickActionResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
+                Log.e(TAG, "Popular recipes failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load popular recipes"
@@ -131,18 +149,19 @@ class What2CookViewModel @Inject constructor(
         }
     }
 
+    // Quick Action: Quick Meals
     fun getQuickMeals() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             _quickActionTitle.value = "Quick Meals"
-            _quickActionSubtitle.value = "Ready in 30 minutes or less"
+            _quickActionSubtitle.value = "Ready in under 30 minutes"
             
             try {
-                repository.getQuickMeals(maxTime = 30).collect { results ->
-                    _quickActionResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                val results = repository.getQuickMeals(maxTime = 30)
+                _quickActionResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
+                Log.e(TAG, "Quick meals failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load quick meals"
@@ -151,18 +170,19 @@ class What2CookViewModel @Inject constructor(
         }
     }
 
+    // Quick Action: Random Recipes
     fun getRandomRecipes() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            _quickActionTitle.value = "Surprise Me!"
-            _quickActionSubtitle.value = "Random recipe suggestions"
+            _quickActionTitle.value = "Surprise Recipes"
+            _quickActionSubtitle.value = "Discover something new and exciting"
             
             try {
-                repository.getRandomRecipes(count = 5).collect { results ->
-                    _quickActionResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                val results = repository.getRandomRecipes(count = 10)
+                _quickActionResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
+                Log.e(TAG, "Random recipes failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load random recipes"
@@ -171,18 +191,20 @@ class What2CookViewModel @Inject constructor(
         }
     }
 
+    // Quick Action: Favorite Recipes
     fun getFavoriteRecipes() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            _quickActionTitle.value = "Your Favorites"
-            _quickActionSubtitle.value = "Your saved recipes"
+            val favoriteCount = favoritesManager.getFavoriteRecipes().size
+            _quickActionTitle.value = "My Favorite Recipes"
+            _quickActionSubtitle.value = "$favoriteCount saved recipes"
             
             try {
-                repository.getFavoriteRecipes().collect { results ->
-                    _quickActionResults.value = results
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
+                val results = favoritesManager.getFavoriteRecipes()
+                _quickActionResults.value = results
+                _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
+                Log.e(TAG, "Favorite recipes failed: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load favorite recipes"

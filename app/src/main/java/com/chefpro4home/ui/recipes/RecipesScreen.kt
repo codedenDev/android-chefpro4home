@@ -34,10 +34,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.chefpro4home.data.model.Recipe
+import com.chefpro4home.data.model.Tag
 import com.chefpro4home.ui.components.LoadingIndicator
 import com.chefpro4home.ui.theme.ChefPro4HomeTheme
 import androidx.compose.ui.res.painterResource
 import com.chefpro4home.R
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,19 +202,46 @@ fun SearchBar(
 @Composable
 fun CuisineFilterChips(
     selectedCuisine: String?,
-    onCuisineSelected: (String?) -> Unit
+    onCuisineSelected: (String?) -> Unit,
+    viewModel: RecipesViewModel = hiltViewModel()
 ) {
-    val cuisines = listOf("All", "Italian", "Mexican", "Asian", "American", "Mediterranean")
+    val availableCuisines by viewModel.availableCuisines.collectAsState()
+    val recipeCounts by viewModel.cuisineRecipeCounts.collectAsState()
     
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(cuisines) { cuisine ->
+        items(availableCuisines) { cuisine ->
+            val isSelected = (cuisine == "All" && selectedCuisine == null) || (cuisine == selectedCuisine)
+            val count = recipeCounts[cuisine] ?: 0
+            
             FilterChip(
-                onClick = { onCuisineSelected(if (cuisine == selectedCuisine) null else cuisine) },
-                label = { Text(cuisine) },
-                selected = cuisine == selectedCuisine
+                onClick = { onCuisineSelected(cuisine) },
+                label = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(cuisine)
+                        // Recipe count badge
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary 
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f)
+                                           else MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                },
+                selected = isSelected
             )
         }
     }
@@ -222,8 +251,18 @@ fun CuisineFilterChips(
 fun RecipeCard(
     recipe: Recipe,
     onClick: () -> Unit,
-    onAddToShoppingList: (Recipe) -> Unit = {}
+    onAddToShoppingList: (Recipe) -> Unit = {},
+    viewModel: RecipesViewModel = hiltViewModel()
 ) {
+    val tags = remember(recipe.id) {
+        mutableStateOf<List<com.chefpro4home.data.model.Tag>>(emptyList())
+    }
+    
+    LaunchedEffect(recipe.id) {
+        // Load tags for this recipe
+        val loadedTags = viewModel.getTagsForRecipe(recipe.id)
+        tags.value = loadedTags
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -284,36 +323,64 @@ fun RecipeCard(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // Action buttons
+                // Action buttons row - matches iOS ElegantRecipeListCard
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Favorite button
+                    // Favorite button (heart)
                     IconButton(
-                        onClick = { /* Toggle favorite */ },
-                        modifier = Modifier.size(24.dp)
+                        onClick = { /* Toggle favorite - iOS integration TODO */ },
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.FavoriteBorder,
+                            imageVector = Icons.Filled.FavoriteBorder, // TODO: Check favorite status
                             contentDescription = "Add to favorites",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     
-                    Spacer(modifier = Modifier.weight(1f))
+                    // Cuisine tags (centered) - matches iOS
+                    val cuisineTags = tags.value.filter { it.tagType == "cuisine" }.take(2)
+                    if (cuisineTags.isNotEmpty()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            cuisineTags.forEach { tag ->
+                                Text(
+                                    text = tag.tagValue,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                     
                     // Shopping cart button
                     IconButton(
                         onClick = { onAddToShoppingList(recipe) },
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.ShoppingCart,
                             contentDescription = "Add to shopping list",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.primary, // TODO: Check if in shopping list
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }

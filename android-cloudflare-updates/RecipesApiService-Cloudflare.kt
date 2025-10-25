@@ -52,6 +52,18 @@ interface RecipesApiService {
 
 // MARK: - Cloudflare API Response Models
 
+/**
+ * Cloudflare API response structure matching the iOS app format
+ */
+data class CloudflareApiResponse(
+    val success: Boolean,
+    val data: CloudflareRecipesData
+)
+
+data class CloudflareRecipesData(
+    val recipes: List<CloudflareRecipeModel>,
+    val total: Int
+)
 
 data class CloudflareSingleRecipeResponse(
     val success: Boolean,
@@ -63,22 +75,38 @@ data class CloudflareSingleRecipeData(
 )
 
 /**
- * Cloudflare Recipe Model - matches actual API response structure
+ * Cloudflare Recipe Model - matches iOS RecipeModel structure
  */
 data class CloudflareRecipeModel(
     val id: String,
-    val title: String,
-    val description: String? = "",
-    val prep_time: Int? = 0,
-    val cook_time: Int? = 0,
-    val servings: Int? = 1,
-    val difficulty: String? = "Medium",
+    val type: String? = "food",
     val image_url: String,
+    val pin_image_url: String,
+    val pin_image_repin_id: String? = "",
+    val name: String,
+    val summary: String? = "",
+    val servings: String? = "1",
+    val servings_unit: String? = "servings",
+    val servings_advanced_enabled: String? = "",
+    val servings_advanced: CloudflareServingsAdvanced? = null,
+    val prep_time: String? = "0",
+    val prep_time_zero: String? = "",
+    val cook_time: String? = "0",
+    val cook_time_zero: String? = "",
+    val total_time: String? = "0",
+    val custom_time: String? = "0",
+    val custom_time_zero: String? = "",
+    val custom_time_label: String? = "",
+    val tags: CloudflareTags? = null,
+    val equipment: List<CloudflareEquipment>? = emptyList(),
+    val ingredients_flat: List<CloudflareIngredient>? = emptyList(),
+    val instructions_flat: List<CloudflareInstruction>? = emptyList(),
+    val video_embed: String? = "",
+    val notes: String? = "",
+    val nutrition: CloudflareNutrition? = null,
+    val difficulty: String? = "medium",
     val created_at: String? = "",
-    val updated_at: String? = "",
-    val ingredients: List<CloudflareIngredient>? = emptyList(),
-    val instructions: List<CloudflareInstruction>? = emptyList(),
-    val tags: CloudflareTags? = null
+    val updated_at: String? = ""
 )
 
 data class CloudflareServingsAdvanced(
@@ -104,14 +132,19 @@ data class CloudflareEquipment(
 )
 
 data class CloudflareIngredient(
-    val name: String,
-    val amount: Double? = 0.0,
+    val uid: Int? = 0,
+    val amount: String? = "",
     val unit: String? = "",
-    val notes: String? = ""
+    val name: String,
+    val notes: String? = "",
+    val unit_id: Int? = null,
+    val type: String? = "ingredient"
 )
 
 data class CloudflareInstruction(
-    val instruction: String
+    val step_number: Int? = 1,
+    val instruction: String,
+    val image_url: String? = null
 )
 
 data class CloudflareNutrition(
@@ -169,7 +202,3 @@ data class CloudflareMigrationError(
     val error: String
 )
 
-data class CloudflareApiResponse(
-    val message: String,
-    val recipes: List<CloudflareRecipeModel>
-)

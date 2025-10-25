@@ -3,11 +3,13 @@ package com.chefpro4home.ui.recipes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chefpro4home.data.model.Recipe
+import com.chefpro4home.data.model.Tag
 import com.chefpro4home.data.repository.RecipesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,18 +21,74 @@ class RecipesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RecipesUiState())
     val uiState: StateFlow<RecipesUiState> = _uiState.asStateFlow()
 
+    private val _allRecipes = MutableStateFlow<List<Recipe>>(emptyList())
     private val _recipes = MutableStateFlow<List<Recipe>>(emptyList())
     val recipes: StateFlow<List<Recipe>> = _recipes.asStateFlow()
 
     private val _searchText = MutableStateFlow("")
     val searchText: StateFlow<String> = _searchText.asStateFlow()
-
+    
     private val _selectedCuisine = MutableStateFlow<String?>(null)
     val selectedCuisine: StateFlow<String?> = _selectedCuisine.asStateFlow()
+    
+    private val _availableCuisines = MutableStateFlow<List<String>>(emptyList())
+    val availableCuisines: StateFlow<List<String>> = _availableCuisines.asStateFlow()
+    
+    private val _cuisineRecipeCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val cuisineRecipeCounts: StateFlow<Map<String, Int>> = _cuisineRecipeCounts.asStateFlow()
 
     init {
-        // Clear any cached data and load fresh from API
-        clearCacheAndLoadRecipes()
+        // Start with empty state to prevent crashes
+        _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = null)
+        println("🚀 RecipesViewModel initialized")
+        
+        // Load recipes with error handling
+        initializeRecipes()
+    }
+    
+    private fun initializeRecipes() {
+        viewModelScope.launch {
+            try {
+                // Load recipes quietly without showing loading screen
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = null)
+                
+                // Try to refresh from API first, fallback to local data
+                try {
+                    repository.refreshRecipes()
+                } catch (apiError: Exception) {
+                    // Silently fall back to local data
+                }
+                
+                // Load recipes from database
+                val recipes = repository.getAllRecipes().first()
+                _allRecipes.value = recipes
+                _recipes.value = recipes
+                
+                // Load cuisines
+                val cuisines = repository.getAllCuisines()
+                _availableCuisines.value = listOf("All") + cuisines
+                
+                // Load cuisine counts
+                val cuisineCounts = mutableMapOf<String, Int>()
+                cuisineCounts["All"] = recipes.size
+                cuisines.forEach { cuisine ->
+                    cuisineCounts[cuisine] = repository.getRecipeCountByCuisine(cuisine)
+                }
+                _cuisineRecipeCounts.value = cuisineCounts
+                
+            } catch (e: Exception) {
+                // Try to load any existing data from database
+                try {
+                    val recipes = repository.getAllRecipes().first()
+                    _allRecipes.value = recipes
+                    _recipes.value = recipes
+                } catch (dbError: Exception) {
+                    // If all else fails, show empty state
+                    _allRecipes.value = emptyList()
+                    _recipes.value = emptyList()
+                }
+            }
+        }
     }
     
     private fun clearCacheAndLoadRecipes() {
@@ -76,7 +134,14 @@ class RecipesViewModel @Inject constructor(
                 // Load from local database (which now has fresh API data)
                 repository.getAllRecipes().collect { recipeList ->
                     println("📋 Loaded ${recipeList.size} recipes from local database")
-                    _recipes.value = recipeList
+                    _allRecipes.value = recipeList
+                    
+                    // Load available cuisines
+                    loadAvailableCuisines()
+                    
+                    // Apply current filters
+                    filterRecipes()
+                    
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
             } catch (e: Exception) {
@@ -86,6 +151,27 @@ class RecipesViewModel @Inject constructor(
                     isLoading = false,
                     errorMessage = e.message ?: "Failed to load recipes"
                 )
+            }
+        }
+    }
+    
+    private fun loadAvailableCuisines() {
+        viewModelScope.launch {
+            try {
+                val cuisines = repository.getAllCuisines()
+                _availableCuisines.value = listOf("All") + cuisines.sorted()
+                
+                // Load recipe counts for each cuisine
+                val counts = mutableMapOf<String, Int>()
+                counts["All"] = _allRecipes.value.size
+                cuisines.forEach { cuisine ->
+                    counts[cuisine] = repository.getRecipeCountByCuisine(cuisine)
+                }
+                _cuisineRecipeCounts.value = counts
+                
+                println("📊 Loaded ${cuisines.size} cuisines with counts: $counts")
+            } catch (e: Exception) {
+                println("⚠️ Error loading cuisines: ${e.message}")
             }
         }
     }
@@ -108,35 +194,65 @@ class RecipesViewModel @Inject constructor(
     }
 
     fun updateSelectedCuisine(cuisine: String?) {
-        _selectedCuisine.value = cuisine
+        _selectedCuisine.value = if (cuisine == "All") null else cuisine
         filterRecipes()
     }
 
     private fun filterRecipes() {
         viewModelScope.launch {
-            val currentRecipes = _recipes.value
-            var filteredRecipes = currentRecipes
-
-            // Apply search filter
-            if (_searchText.value.isNotEmpty()) {
-                val searchTerm = _searchText.value.lowercase()
+            var filteredRecipes = _allRecipes.value
+            
+            // Apply cuisine filter FIRST (more restrictive) - matches iOS
+            _selectedCuisine.value?.let { cuisine ->
+                val recipeIdsForCuisine = repository.getTagsByRecipeIdSync("")
+                    .filter { it.tagType == "cuisine" && it.tagValue == cuisine }
+                    .map { it.recipeId }
+                    .toSet()
+                
                 filteredRecipes = filteredRecipes.filter { recipe ->
-                    recipe.name.lowercase().contains(searchTerm) ||
-                    recipe.summary.lowercase().contains(searchTerm)
+                    recipeIdsForCuisine.contains(recipe.id)
                 }
             }
 
-            // Apply cuisine filter
-            _selectedCuisine.value?.let { cuisine ->
-                if (cuisine != "All") {
-                    // This would need to be implemented with tags
-                    // filteredRecipes = filteredRecipes.filter { recipe ->
-                    //     recipe.tags.cuisine.contains(cuisine)
-                    // }
+            // Apply search filter SECOND (on already filtered results) - matches iOS
+            if (_searchText.value.isNotEmpty()) {
+                val searchTerm = _searchText.value.lowercase()
+                filteredRecipes = filteredRecipes.filter { recipe ->
+                    // Search in recipe name
+                    recipe.name.lowercase().contains(searchTerm) ||
+                    // Search in summary
+                    recipe.summary.lowercase().contains(searchTerm) ||
+                    // Search in ingredients (need to load from DB)
+                    searchInIngredients(recipe.id, searchTerm) ||
+                    // Search in tags
+                    searchInTags(recipe.id, searchTerm)
                 }
             }
 
             _recipes.value = filteredRecipes
+            println("🔍 Filtered ${_allRecipes.value.size} recipes down to ${filteredRecipes.size}")
+        }
+    }
+    
+    private suspend fun searchInIngredients(recipeId: String, searchTerm: String): Boolean {
+        return try {
+            val ingredients = repository.getIngredientsByRecipeIdSync(recipeId)
+            ingredients.any { ingredient ->
+                ingredient.name?.lowercase()?.contains(searchTerm) == true
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    private suspend fun searchInTags(recipeId: String, searchTerm: String): Boolean {
+        return try {
+            val tags = repository.getTagsByRecipeIdSync(recipeId)
+            tags.any { tag ->
+                tag.tagValue.lowercase().contains(searchTerm)
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -145,8 +261,29 @@ class RecipesViewModel @Inject constructor(
     }
 
     fun getCuisineCategories(): List<String> {
-        // This would query tags to get available cuisines
-        return listOf("All", "Cuban", "German", "Tex-Mex", "Italian", "Mexican", "American")
+        return _availableCuisines.value
+    }
+    
+    fun getRecipeCountForCuisine(cuisine: String): Int {
+        return _cuisineRecipeCounts.value[cuisine] ?: 0
+    }
+    
+    suspend fun getTagsForRecipe(recipeId: String): List<Tag> {
+        return try {
+            repository.getTagsByRecipeIdSync(recipeId)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    suspend fun isRecipeInShoppingList(recipeId: String): Boolean {
+        // Check if recipe ingredients are in shopping list
+        return try {
+            val shoppingItems = repository.getAllShoppingItems().first()
+            shoppingItems.any { it.recipeId == recipeId }
+        } catch (e: Exception) {
+            false
+        }
     }
     
     fun addRecipeToShoppingList(recipe: Recipe) {

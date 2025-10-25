@@ -3,6 +3,7 @@ package com.chefpro4home.di
 import android.content.Context
 import com.chefpro4home.data.database.RecipeDatabase
 import com.chefpro4home.data.database.dao.*
+import com.chefpro4home.data.manager.FavoritesManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -70,6 +71,13 @@ object DatabaseModule {
     fun provideContext(@ApplicationContext context: Context): Context {
         return context
     }
+
+    @Provides
+    @Singleton
+    fun provideFavoritesManager(@ApplicationContext context: Context): FavoritesManager {
+        return FavoritesManager(context)
+    }
 }
+
 
 

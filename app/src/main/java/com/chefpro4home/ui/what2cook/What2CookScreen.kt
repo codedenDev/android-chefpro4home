@@ -76,7 +76,7 @@ fun What2CookScreen(
         
         // Quick Actions
         QuickActionsSection(
-            onInventoryRecipes = viewModel::getInventoryRecipes,
+            onInventoryRecipes = { viewModel.getInventoryRecipes(0) }, // TODO: Get actual inventory count
             onPopularRecipes = viewModel::getPopularRecipes,
             onQuickMeals = viewModel::getQuickMeals,
             onRandomRecipes = viewModel::getRandomRecipes,
