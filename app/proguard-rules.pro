@@ -51,4 +51,42 @@
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 
+# Hilt
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
+-dontwarn dagger.hilt.**
+
+# Hilt AndroidEntryPoint
+-keepclasseswithmembers class * {
+    @dagger.hilt.android.AndroidEntryPoint <methods>;
+}
+
+# Keep Application classes annotated with @HiltAndroidApp
+-keep @dagger.hilt.android.HiltAndroidApp class * extends android.app.Application
+
+# DataStore
+-keep class androidx.datastore.** { *; }
+
+# Coil
+-dontwarn coil.**
+-keep class coil.** { *; }
+
+# Kotlin
+-keepclassmembers class * {
+    @kotlinx.parcelize.Parcelize <methods>;
+}
+
+# Keep line numbers for crash reporting
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# ML Kit Barcode Scanning
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+
+# CameraX
+-keep class androidx.camera.** { *; }
+-dontwarn androidx.camera.**
+
 

@@ -6,16 +6,24 @@ plugins {
     id("kotlin-parcelize")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
 android {
     namespace = "com.chefpro4home"
-    compileSdk = 34
+    compileSdk = 35
+    
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 
     defaultConfig {
         applicationId = "com.chefpro4home"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 4
+        versionName = "4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,13 +31,47 @@ android {
         }
     }
 
+    signingConfigs {
+        val keystorePropertiesFile = rootProject.file("keystore.properties")
+        if (keystorePropertiesFile.exists()) {
+            val keystoreProperties = Properties().apply {
+                load(FileInputStream(keystorePropertiesFile))
+            }
+            val storeFileProp = keystoreProperties.getProperty("storeFile")
+            val storePasswordProp = keystoreProperties.getProperty("storePassword")
+            val keyAliasProp = keystoreProperties.getProperty("keyAlias")
+            val keyPasswordProp = keystoreProperties.getProperty("keyPassword")
+            
+            if (!storeFileProp.isNullOrEmpty()) {
+                val keystoreFile = rootProject.file(storeFileProp)
+                if (keystoreFile.exists()) {
+                    create("release") {
+                        storeFile = keystoreFile
+                        storePassword = storePasswordProp ?: ""
+                        keyAlias = keyAliasProp ?: ""
+                        keyPassword = keyPasswordProp ?: ""
+                    }
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            try {
+                signingConfig = signingConfigs.getByName("release")
+            } catch (e: Exception) {
+                // Signing config not available, will build unsigned
+            }
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -53,6 +95,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+    
+    buildFeatures {
+        buildConfig = true
+    }
+    
+    // Enable native debug symbols
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 }
@@ -124,5 +177,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
-

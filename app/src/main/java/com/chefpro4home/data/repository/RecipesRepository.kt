@@ -432,14 +432,14 @@ class RecipesRepository @Inject constructor(
     )
     
     /**
-     * Load recipes from local JSON (real recipes) - matches iOS data
+     * Load recipes from local JSON (your real recipes)
      */
     suspend fun refreshRecipes() {
         try {
             // Clear existing data first
             clearAllLocalData()
 
-            println("📖 Loading recipes from local JSON (real recipes)...")
+            println("📖 Loading recipes from local JSON (your real recipes)...")
             val recipeData = loadRecipesFromAssets()
             println("✅ Loaded ${recipeData.recipes.size} recipes from local JSON")
 
